@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from openai import OpenAI
 from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
+from typing import List, Dict
 
 # 1. Setup Logging - Helps you see what's happening in the console
 logging.basicConfig(level=logging.INFO)
@@ -34,25 +35,41 @@ app.add_middleware(
 client = OpenAI(api_key=api_key)
 
 class ChatRequest(BaseModel):
+    user_id: int
     message: str
 
 class ChatResponse(BaseModel):
     status: str
     response: str
 
+# Simple in-memory storage: { user_id: [messages] }
+chat_storage: Dict[int, List[Dict[str, str]]] = {}
+
 @app.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
     logger.info(f"Received chat message: {request.message}")
+    user_id = request.user_id
+    user_message = request.message
 
+    if user_id not in chat_storage:
+        chat_storage[user_id] = [
+            {"role": "system", "content": "You are a helpful assistant named OrchestriaAI."}
+        ]
+        
+    # 2. Add the new user message to history
+    chat_storage[user_id].append({"role": "user", "content": user_message})  
+    
     try:
-
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": request.message}]
+            messages=chat_storage[user_id]
         )
         
         ai_reply = response.choices[0].message.content
         logger.info("OpenAI request successful")
+
+        # 4. Add AI's response to history so it remembers next time
+        chat_storage[user_id].append({"role": "assistant", "content": ai_reply})
 
         return ChatResponse(status="success", response=ai_reply)
     # Placeholder for actual chat processing logic

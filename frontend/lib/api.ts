@@ -1,10 +1,13 @@
 export async function sendChatMessage(message: string) {
-  const response = await fetch("http://localhost:8000/chat", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message }),
-  });
+    const response = await fetch("http://localhost:8000/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            message,
+            user_id: 1 // Hardcoded for now to track history in memory 
+        }),
+    });
 
-  if (!response.ok) throw new Error("Failed to reach backend");
-  return response.json();
+    if (!response.ok) throw new Error("Failed to reach backend");
+    return response.json();
 }
